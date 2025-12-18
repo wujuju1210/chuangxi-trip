@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>川西寒假出游时间协调</title>
+
+  <!-- Supabase JS SDK -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: linear-gradient(180deg, #eaf2ff, #f7f8fa);
+      color: #333;
+    }
+
+    header {
+      padding: 28px 16px 20px;
+      text-align: center;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 26px;
+      letter-spacing: 1px;
+    }
+
+    header p {
+      margin-top: 8px;
+      color: #666;
+      font-size: 14px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: auto;
+      padding: 16px;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.96);
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 18px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    }
+
+    label {
+      font-weight: 600;
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid #ddd;
+      font-size: 15px;
+    }
+
+    .dates {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+      gap: 8px;
+      max-height: 320px;
+      overflow-y: auto;
+    }
+
+    .date {
+      background: #f0f2f5;
+      border-radius: 10px;
+      padding: 8px 4px;
+      text-align: center;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all .2s;
+    }
+
+    .date:hover { transform: translateY(-2px); }
+
+    .date.selected {
+      background: linear-gradient(135deg, #4facfe, #00f2fe);
+      color: #fff;
+      font-weight: 600;
+    }
+
+    button {
+      margin-top: 14px;
+      width: 100%;
+      padding: 12px;
+      border-radius: 12px;
+      border: none;
+      font-size: 16px;
+      background: linear-gradient(135deg, #1677ff, #69b1ff);
+      color: white;
+      cursor: pointer;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th, td {
+      padding: 10px 6px;
+      border-bottom: 1px solid #eee;
+      text-align: left;
+    }
+
+    .good { color: #2ecc71; font-weight: bold; }
+    .ok { color: #f39c12; }
+    .bad { color: #aaa; }
+
+    footer {
+      text-align: center;
+      font-size: 12px;
+      color: #888;
+      padding: 12px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🏔️ 川西寒假出游时间协调</h1>
+  <p>8 人 · 2025/01/10 – 02/20 · 实时同步（Supabase）</p>
+</header>
+
+<div class="container">
+
+  <div class="card">
+    <label>你的昵称（唯一）</label>
+    <input id="nameInput" placeholder="例如：阿杰" />
+
+    <label style="margin-top:12px">选择你可以出游的日期</label>
+    <div id="dates" class="dates"></div>
+
+    <button onclick="saveData()">保存 / 更新我的时间</button>
+  </div>
+
+  <div class="card">
+    <h3>📊 全员时间汇总（实时）</h3>
+    <table id="summary"></table>
+  </div>
+
+</div>
+
+<footer>数据实时同步 · 基于 Supabase</footer>
+
+<script>
+/************** ① 填入你的 Supabase 信息 **************/
+const SUPABASE_URL = "YOUR_SUPABASE_URL";
+const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+
+const supabase = supabasejs.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const start = new Date('2025-01-10');
+const end = new Date('2025-02-20');
+const datesDiv = document.getElementById('dates');
+const summaryTable = document.getElementById('summary');
+let selectedDates = new Set();
+
+function format(d) { return d.toISOString().slice(0,10); }
+
+let allDates = [];
+for (let d = new Date(start); d <= end; d.setDate(d.getDate()+1)) {
+  const dateStr = format(d);
+  allDates.push(dateStr);
+  const div = document.createElement('div');
+  div.className = 'date';
+  div.innerText = dateStr.slice(5);
+  div.onclick = () => {
+    if (selectedDates.has(dateStr)) {
+      selectedDates.delete(dateStr);
+      div.classList.remove('selected');
+    } else {
+      selectedDates.add(dateStr);
+      div.classList.add('selected');
+    }
+  };
+  datesDiv.appendChild(div);
+}
+
+async function saveData() {
+  const name = nameInput.value.trim();
+  if (!name) return alert('请填写昵称');
+
+  const dates = Array.from(selectedDates);
+
+  await supabase
+    .from('trip')
+    .upsert({ name, dates });
+}
+
+async function loadAndRender() {
+  const { data } = await supabase.from('trip').select('*');
+  renderSummary(data || []);
+}
+
+function renderSummary(rows) {
+  let html = '<tr><th>日期</th><th>人数</th><th>成员</th></tr>';
+  allDates.forEach(date => {
+    const names = rows.filter(r => r.dates?.includes(date)).map(r => r.name);
+    let cls = 'bad';
+    if (names.length >= 8) cls = 'good';
+    else if (names.length >= 5) cls = 'ok';
+    html += `<tr><td>${date}</td><td class="${cls}">${names.length}</td><td>${names.join('、')}</td></tr>`;
+  });
+  summaryTable.innerHTML = html;
+}
+
+// 实时订阅
+supabase
+  .channel('trip-realtime')
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'trip' }, payload => {
+    loadAndRender();
+  })
+  .subscribe();
+
+loadAndRender();
+</script>
+</body>
+</html>
