@@ -154,10 +154,10 @@
 
 <script>
 /************** ① 填入你的 Supabase 信息 **************/
-const SUPABASE_URL = "YOUR_SUPABASE_URL";
-const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+const SUPABASE_URL = "https://lingyhmrwziclplqlog.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxpbmd5aG1yd3ppY2xwbHFsb2dqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwNDc5OTcsImV4cCI6MjA4MTYyMzk5N30.a9LJNYLWtl9z4j8pqtiykTxHivwBJdSFfkFDqjAtDM8";
 
-const supabase = supabasejs.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const start = new Date('2025-01-10');
 const end = new Date('2025-02-20');
